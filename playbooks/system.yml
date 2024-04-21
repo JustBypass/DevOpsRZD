@@ -1,0 +1,15 @@
+- name: Запуск контейнера cAdvisor
+  hosts: localhost  # Можно указать хосты, на которых нужно запустить контейнер
+  tasks:
+    - name: Запуск контейнера cAdvisor
+      docker_container:
+        name: cadvisor
+        image: google/cadvisor:latest
+        detach: true
+        volumes:
+          - "/:/rootfs:ro"
+          - "/var/run:/var/run:rw"
+          - "/sys:/sys:ro"
+          - "/var/lib/docker/:/var/lib/docker:ro"
+        ports:
+          - "8080:8080"
