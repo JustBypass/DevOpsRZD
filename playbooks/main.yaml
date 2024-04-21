@@ -6,17 +6,17 @@
     - name: Ensure Docker service is running
       become: yes
       service:
-        name: docker
-        state: started
+       name: docker
+       state: started
 
-    - name: Create Docker network for task
-      shell: docker network create task
+         #- name: Create Docker network for task
+         # shell: docker network create task
 
     - name: Start Node Exporter container
       docker_container:
         image: prom/node-exporter:latest
         name: node-exporter
-        port: 9100:9100
+        ports: "9100:9100"
         state: started
         networks:
           - name: task
@@ -24,18 +24,20 @@
           - /sys:/host/sys:ro
           - /proc:/host/proc:ro
           - /:/rootfs:ro
-        command: [" --path.procfs=/host/proc --path.rootfs=/rootfs --path.sysfs=/host/sys --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"]
-
 
     - name: Start Prometheus container
       docker_container:
         image: prom/prometheus:latest
         name: prometheus
+        user: "1001"
+        env:
+          PUID: "1001"
+          GUID: "1001"
         volumes: 
           - ./prometheus:/prometheus
           - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
         state: started
-        port: "9090:9090"
+        ports: "9090:9090"
         networks:
           - name: task
        # command: [" --storage.tsdb.path=/prometheus --web.console.libraries=/etc/prometheus/console_libraries --web.console.templates=/etc/prometheus/consoles --web.enable-lifecycle"]
@@ -43,17 +45,22 @@
     - name: Start Grafana container
       docker_container:
         name: grafana
-        image: grafana/grafana:latest
+        image: grafana/grafana-oss
+        user: "0" 
         env:
-          - GF_SECURITY_ADMIN_USER=root
-          - GF_SECURITY_ADMIN_PASSWORD=root
-          - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/app-metrics.json
-          - GF_USERS_ALLOW_SIGN_UP=true
-        port: "3000:3000"
+          GF_LOG_LEVEL: debug
+          GF_SECURITY_ADMIN_USER: root
+          GF_SECURITY_ADMIN_PASSWORD: root
+          GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/docker-container-metrics.json
+          GF_USERS_ALLOW_SIGN_UP: "true"
+        ports: "3000:3000"
         volumes:
-          - ./grafana:/var/lib/grafana
+          - ./grafana/dashboards:/var/lib/grafana/dashboards
+          - ./grafana/dashboards:/etc/grafana/dashboards
+          - ./grafana/provisioning:/etc/grafana/provisioning
           - ./grafana/backup/etc_conf:/etc/grafana 
-          - ./grafana/backup/grafama.db:/var/lib/grafana/grafana.db
+          - ./grafana/backup/grafana.db:/var/lib/grafana/grafana.db:rw
+            # - ./grafana.ini:/etc/grafana/grafana.ini:rw
         state: started
         networks:
           - name: task
@@ -61,15 +68,14 @@
     - name: Start cAdvisor container
       docker_container:
         name: cadvisor
-        image: gcr.io/cadvisor/cadvisor:latest
-        command: ["--network monitoring  --prometheus_endpoint"]
+        image: google/cadvisor:latest
         volumes:
           - /var/run:/var/run:rw
           - /sys:/sys:ro
           - /:/rootfs:ro
           - /var/lib/docker/:/var/lib/docker:ro
         state: started
-        port: "8081:8080"
+        ports: "8081:8080"
         networks:
           - name: task
 

@@ -1,2 +1,7 @@
 .vscode/
 .idea/
+backups/
+backup/
+*.db
+plugins/
+plugin/
