@@ -9,8 +9,8 @@
         name: docker
         state: started
 
-    - name: Create Docker network for monitoring
-      shell: docker network create monitoring
+    - name: Create Docker network for task
+      shell: docker network create task
 
     - name: Start Node Exporter container
       docker_container:
@@ -18,25 +18,27 @@
         name: node-exporter
         port: 9100:9100
         state: started
+        networks:
+          - name: task
         volumes:
           - /sys:/host/sys:ro
           - /proc:/host/proc:ro
           - /:/rootfs:ro
-        command: ["--network monitoring --path.procfs=/host/proc --path.rootfs=/rootfs --path.sysfs=/host/sys --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"]
-        links:
-          - "prometheus"
+        command: [" --path.procfs=/host/proc --path.rootfs=/rootfs --path.sysfs=/host/sys --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"]
+
 
     - name: Start Prometheus container
       docker_container:
         image: prom/prometheus:latest
         name: prometheus
-        image: prom/prometheus:latest
         volumes: 
           - ./prometheus:/prometheus
           - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
         state: started
         port: "9090:9090"
-        command: ["--network monitoring --storage.tsdb.path=/prometheus --web.console.libraries=/etc/prometheus/console_libraries --web.console.templates=/etc/prometheus/consoles --web.enable-lifecycle"]
+        networks:
+          - name: task
+       # command: [" --storage.tsdb.path=/prometheus --web.console.libraries=/etc/prometheus/console_libraries --web.console.templates=/etc/prometheus/consoles --web.enable-lifecycle"]
 
     - name: Start Grafana container
       docker_container:
@@ -53,7 +55,8 @@
           - ./grafana/backup/etc_conf:/etc/grafana 
           - ./grafana/backup/grafama.db:/var/lib/grafana/grafana.db
         state: started
-        command: ["--network monitoring --restart=unless-stopped"]
+        networks:
+          - name: task
 
     - name: Start cAdvisor container
       docker_container:
@@ -67,17 +70,17 @@
           - /var/lib/docker/:/var/lib/docker:ro
         state: started
         port: "8081:8080"
-        links:
-          - "prometheus"
+        networks:
+          - name: task
 
-    - name: Copy Prometheus configuration file
-      docker_copy:
-        src: ~/promgrafnode/prometheus/prometheus.yml
-        dest: /etc/prometheus/prometheus.yml
-        container: prometheus
+    # - name: Copy Prometheus configuration file
+    #   docker_copy:
+    #     src: ./promgrafnode/prometheus/prometheus.yml
+    #     dest: /etc/prometheus/prometheus.yml
+    #     container: prometheus
 
-    - name: Copy Grafana provisioning datasources configuration
-      docker_copy:
-        src: ./grafana/provisioning/datasources
-        dest: /etc/grafana/provisioning/datasources
-        container: grafana
+    # - name: Copy Grafana provisioning datasources configuration
+    #   docker_copy:
+    #     src: ./grafana/provisioning/datasources
+    #     dest: /etc/grafana/provisioning/datasources
+    #     container: grafana
