@@ -5,3 +5,10 @@ backup/
 *.db
 plugins/
 plugin/
+chunks_head/
+wal/
+*.html
+*.active
+lock
+*.lock
+
