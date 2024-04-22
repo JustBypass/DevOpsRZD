@@ -20,11 +20,15 @@
         state: started
         networks:
           - name: task
+        env:
+          path.procfs: /host/proc
+          path.rootfs: /rootfs
+          path.sysfs: /host/sys
+          collector.filesystem.mount-points-exclude: ^/(sys|proc|dev\host|etc)($$|/)
         volumes:
           - /sys:/host/sys:ro
           - /proc:/host/proc:ro
           - /:/rootfs:ro
-        commands: ["--path.procfs=/host/proc --path.rootfs=/rootfs --path.sysfs=/host/sys --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc0($$|/)"]
     - name: Start Prometheus container
       docker_container:
         image: prom/prometheus:latest
@@ -73,6 +77,7 @@
           - /var/lib/docker/:/var/lib/docker:ro
         state: started
         ports: "9093:9093"
+        expose: "8080"
         networks:
           - name: task
 
